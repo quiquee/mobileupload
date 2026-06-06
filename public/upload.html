@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Enviar fotografía</title>
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Enviar documento</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Montserrat:wght@200;300;400&display=swap" rel="stylesheet" />
   <style>
@@ -14,14 +17,14 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       background-color: #0d0d0d;
       background-image:
         radial-gradient(ellipse at 20% 30%, rgba(184,142,40,0.08) 0%, transparent 55%),
         radial-gradient(ellipse at 80% 70%, rgba(184,142,40,0.06) 0%, transparent 55%);
       font-family: 'Montserrat', sans-serif;
       color: #c9a84c;
-      padding: 40px 24px;
+      padding: 32px 20px 48px;
     }
 
     body::before {
@@ -37,21 +40,23 @@
       position: relative;
       z-index: 1;
       width: 100%;
-      max-width: 360px;
+      max-width: 380px;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
 
+    /* ── Header ─────────────────────────────────────────── */
     .ornament {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 28px;
+      margin-bottom: 20px;
       opacity: 0.55;
+      width: 100%;
     }
     .ornament-line {
-      width: 56px; height: 1px;
+      flex: 1; height: 1px;
       background: linear-gradient(to right, transparent, #c9a84c);
     }
     .ornament-line.r { background: linear-gradient(to left, transparent, #c9a84c); }
@@ -63,35 +68,86 @@
 
     h1 {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 2rem;
+      font-size: 1.9rem;
       font-weight: 300;
       letter-spacing: 0.12em;
       background: linear-gradient(135deg, #9a7a28 0%, #e8c96d 40%, #f5e090 55%, #c9a84c 100%);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       text-align: center;
     }
 
     .subtitle {
-      font-size: 0.6rem;
+      font-size: 0.58rem;
       font-weight: 200;
-      letter-spacing: 0.45em;
+      letter-spacing: 0.4em;
       text-transform: uppercase;
       color: #7a6030;
-      margin-bottom: 36px;
+      margin-bottom: 24px;
       text-align: center;
     }
 
-    /* Preview area */
+    /* ── Step indicator ──────────────────────────────────── */
+    .steps {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      width: 100%;
+    }
+    .step-pill {
+      flex: 1;
+      height: 3px;
+      border-radius: 2px;
+      background: rgba(201,168,76,0.15);
+      transition: background 0.4s;
+    }
+    .step-pill.active { background: rgba(201,168,76,0.6); }
+    .step-pill.done   { background: rgba(125,184,125,0.7); }
+
+    /* ── Side label ──────────────────────────────────────── */
+    .side-label {
+      font-size: 0.6rem;
+      font-weight: 300;
+      letter-spacing: 0.45em;
+      text-transform: uppercase;
+      color: rgba(201,168,76,0.7);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    /* ── Sample mockup ───────────────────────────────────── */
+    .sample-wrap {
+      width: 100%;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .sample-label {
+      font-size: 0.5rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(201,168,76,0.3);
+    }
+    .sample-img {
+      width: 100%;
+      max-width: 300px;
+      border: 1px solid rgba(201,168,76,0.12);
+      border-radius: 4px;
+      opacity: 0.55;
+    }
+
+    /* ── Preview area ────────────────────────────────────── */
     #preview-wrap {
       width: 100%;
       aspect-ratio: 4/3;
       border: 1px solid rgba(201,168,76,0.2);
       border-radius: 4px;
       overflow: hidden;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
       display: none;
       background: #111;
       position: relative;
@@ -99,11 +155,32 @@
     #preview {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
+      transition: transform 0.3s ease;
     }
 
-    /* Placeholder box */
+    /* Rotation button — appears inside preview-wrap */
+    #btn-rotate {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      width: 34px;
+      height: 34px;
+      background: rgba(13,13,13,0.75);
+      border: 1px solid rgba(201,168,76,0.4);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 2;
+      transition: background 0.2s;
+    }
+    #btn-rotate:active { background: rgba(201,168,76,0.2); }
+    #btn-rotate svg { width: 16px; height: 16px; stroke: #c9a84c; }
+
+    /* ── Placeholder ─────────────────────────────────────── */
     #placeholder {
       width: 100%;
       aspect-ratio: 4/3;
@@ -113,7 +190,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
       gap: 10px;
       color: rgba(201,168,76,0.35);
     }
@@ -124,6 +201,7 @@
       text-transform: uppercase;
     }
 
+    /* ── Buttons ─────────────────────────────────────────── */
     .btn-row {
       display: flex;
       gap: 10px;
@@ -155,6 +233,7 @@
       color: #c9a84c;
       border: 1px solid rgba(201,168,76,0.35);
     }
+
     .btn-send {
       width: 100%;
       padding: 16px;
@@ -173,6 +252,7 @@
       transition: opacity 0.2s;
     }
     .btn-send:active { opacity: 0.8; }
+    .btn-send:disabled { opacity: 0.4; cursor: default; }
 
     input[type=file] { display: none; }
 
@@ -183,37 +263,42 @@
       text-align: center;
       min-height: 20px;
       color: rgba(201,168,76,0.6);
+      margin-bottom: 8px;
     }
-    #status.success { color: #7db87d; }
-    #status.error { color: #c0665a; }
-    #status.uploading { color: #c9a84c; }
+    #status.success  { color: #7db87d; }
+    #status.error    { color: #c0665a; }
+    #status.uploading{ color: #c9a84c; }
 
-    .another-btn {
+    /* ── Completion screen ───────────────────────────────── */
+    #done-screen {
       display: none;
-      margin-top: 20px;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 24px 0;
       width: 100%;
-      padding: 14px;
-      background: transparent;
-      border: 1px solid rgba(201,168,76,0.35);
-      color: #c9a84c;
-      font-family: 'Montserrat', sans-serif;
+    }
+    .done-icon {
+      width: 52px; height: 52px;
+      border: 1px solid rgba(125,184,125,0.5);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .done-icon svg { width: 24px; height: 24px; stroke: #7db87d; }
+    .done-text {
       font-size: 0.65rem;
       letter-spacing: 0.3em;
       text-transform: uppercase;
-      border-radius: 3px;
-      cursor: pointer;
-      transition: background 0.2s;
+      color: #7db87d;
+      text-align: center;
     }
-    .another-btn:hover { background: rgba(201,168,76,0.07); }
-
-    .counter {
-      font-size: 0.6rem;
-      letter-spacing: 0.3em;
+    .done-sub {
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
-      color: rgba(201,168,76,0.4);
-      margin-top: 24px;
+      color: rgba(201,168,76,0.3);
+      text-align: center;
     }
-    .counter span { color: #c9a84c; }
   </style>
 </head>
 <body>
@@ -224,19 +309,52 @@
       <div class="ornament-line r"></div>
     </div>
 
-    <h1>Fotografía</h1>
-    <div class="subtitle">Envío de imágenes</div>
+    <h1 id="doc-title">Documento</h1>
+    <div class="subtitle" id="doc-subtitle">Envío de imágenes</div>
 
+    <!-- Intro screen (explains required photos) -->
+    <div id="intro-screen" style="display:none; flex-direction:column; align-items:center; width:100%; gap:16px;">
+      <div class="side-label" style="margin-bottom:0" id="intro-title">Se requieren 2 fotografías</div>
+      <div id="intro-mockups" style="display:flex; flex-direction:column; gap:12px; width:100%; align-items:center; margin-bottom: 8px; opacity: 0.7;"></div>
+      <button class="btn-send" style="display:block;" onclick="startCapture()">Comenzar</button>
+    </div>
+
+    <!-- Capture screen -->
+    <div id="capture-screen" style="display:none; flex-direction:column; align-items:center; width:100%;">
+      <!-- Step pills (hidden for passport / single-photo) -->
+      <div class="steps" id="steps-wrap" style="display:none">
+        <div class="step-pill active" id="step-0"></div>
+        <div class="step-pill" id="step-1"></div>
+      </div>
+
+      <!-- Side indicator -->
+      <div class="side-label" id="side-label"></div>
+
+      <!-- Sample mockup SVG -->
+      <div class="sample-wrap" id="sample-wrap">
+        <div class="sample-label" id="sample-label-text">Modelo de referencia</div>
+        <div id="sample-img-container"></div>
+      </div>
+
+    <!-- Photo area -->
     <div id="placeholder">
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
           d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
       </svg>
-      <span>Selecciona una fotografía</span>
+      <span>Selecciona una fotografía de la camara o la galeria</span>
     </div>
 
-    <div id="preview-wrap"><img id="preview" alt="Vista previa" /></div>
+    <div id="preview-wrap">
+      <img id="preview" alt="Vista previa" />
+      <button id="btn-rotate" title="Rotar imagen" onclick="rotatePreview()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0114.7-5.7M20 15a9 9 0 01-14.7 5.7"/>
+        </svg>
+      </button>
+    </div>
 
     <div class="btn-row">
       <button class="btn btn-primary" onclick="document.getElementById('camera-input').click()">Cámara</button>
@@ -244,41 +362,391 @@
     </div>
 
     <input type="file" id="camera-input" accept="image/*" capture="environment" />
-    <input type="file" id="gallery-input" accept="image/*" />
+      <input type="file" id="gallery-input" accept="image/*" />
 
-    <button class="btn-send" id="btn-send" onclick="sendPhoto()">Enviar fotografía</button>
-    <div id="status"></div>
+      <button class="btn-send" id="btn-send" onclick="sendPhoto()">Enviar fotografía</button>
+      <div id="status"></div>
+    </div> <!-- /capture-screen -->
 
-    <button class="another-btn" id="btn-another" onclick="resetForm()">+ Añadir otra fotografía</button>
-    <div class="counter" id="counter" style="display:none">
-      Fotos enviadas: <span id="count">0</span>
+    <!-- Completion screen -->
+    <div id="done-screen">
+      <div class="done-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="done-text" id="done-text">Documento enviado</div>
+      <div class="done-sub">Puede cerrar esta ventana</div>
     </div>
   </div>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
+    // ── SVG mockups ─────────────────────────────────────────────────────────
+    // Generic Spanish ID card (DNI) — front face
+    const DNI_FRONT_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 214" width="300" height="189"
+  style="display:block;max-width:100%;border-radius:8px;">
+  <!-- Card body -->
+  <rect width="340" height="214" rx="12" fill="#f5f0e8"/>
+  <!-- Header band -->
+  <rect width="340" height="44" rx="0" fill="#1a3a6b"/>
+  <rect y="0" width="340" height="44" rx="12" fill="#1a3a6b"/>
+  <rect y="24" width="340" height="20" fill="#1a3a6b"/>
+  <!-- Flag stripe -->
+  <rect x="0" y="0" width="12" height="44" rx="0" fill="#c60b1e"/>
+  <rect x="0" y="0" width="12" height="44" rx="12" fill="#c60b1e"/>
+  <!-- Header text -->
+  <text x="26" y="16" font-family="sans-serif" font-size="9" font-weight="bold"
+    fill="#fff" letter-spacing="1.5">ESPAÑA</text>
+  <text x="26" y="32" font-family="sans-serif" font-size="7.5" fill="rgba(255,255,255,0.85)"
+    letter-spacing="1">DOCUMENTO NACIONAL DE IDENTIDAD</text>
+  <!-- EU stars ring (simplified) -->
+  <circle cx="318" cy="22" r="13" fill="none" stroke="rgba(255,220,0,0.6)" stroke-width="0.5"/>
+  <circle cx="318" cy="22" r="2" fill="rgba(255,220,0,0.7)"/>
+  <!-- Photo placeholder -->
+  <rect x="16" y="56" width="72" height="90" rx="4" fill="#d8d0c0"/>
+  <text x="52" y="105" font-family="sans-serif" font-size="8" fill="#999" text-anchor="middle">FOTO</text>
+  <!-- Name lines -->
+  <rect x="102" y="62" width="140" height="8" rx="2" fill="#c8c0b0"/>
+  <rect x="102" y="78" width="110" height="8" rx="2" fill="#c8c0b0"/>
+  <text x="102" y="106" font-family="sans-serif" font-size="6.5" fill="#555" letter-spacing="0.5">Apellidos</text>
+  <rect x="102" y="110" width="130" height="7" rx="2" fill="#c8c0b0"/>
+  <text x="102" y="128" font-family="sans-serif" font-size="6.5" fill="#555" letter-spacing="0.5">Nombre</text>
+  <rect x="102" y="132" width="90" height="7" rx="2" fill="#c8c0b0"/>
+  <!-- DNI number -->
+  <text x="16" y="168" font-family="monospace" font-size="13" font-weight="bold"
+    fill="#1a3a6b" letter-spacing="2">12 345 678-X</text>
+  <!-- MRZ lines -->
+  <rect x="0" y="182" width="340" height="14" fill="rgba(0,0,0,0.04)"/>
+  <text x="10" y="192" font-family="monospace" font-size="7" fill="#888" letter-spacing="1">
+    IDESP12345678X&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+  </text>
+  <rect x="0" y="196" width="340" height="14" fill="rgba(0,0,0,0.04)"/>
+  <text x="10" y="206" font-family="monospace" font-size="7" fill="#888" letter-spacing="1">
+    &lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;0&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+  </text>
+  <!-- Corner marks -->
+  <text x="4" y="175" font-family="sans-serif" font-size="6" fill="rgba(0,0,0,0.25)">◆</text>
+</svg>`;
+
+    // Generic Spanish ID card (DNI) — back face
+    const DNI_BACK_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 214" width="300" height="189"
+  style="display:block;max-width:100%;border-radius:8px;">
+  <rect width="340" height="214" rx="12" fill="#f5f0e8"/>
+  <!-- Header band -->
+  <rect width="340" height="44" rx="12" fill="#1a3a6b"/>
+  <rect y="24" width="340" height="20" fill="#1a3a6b"/>
+  <rect x="0" y="0" width="12" height="44" rx="12" fill="#c60b1e"/>
+  <text x="26" y="16" font-family="sans-serif" font-size="9" font-weight="bold"
+    fill="#fff" letter-spacing="1.5">ESPAÑA</text>
+  <text x="26" y="32" font-family="sans-serif" font-size="7.5" fill="rgba(255,255,255,0.85)"
+    letter-spacing="1">DOCUMENTO NACIONAL DE IDENTIDAD · REVERSO</text>
+  <!-- Address section -->
+  <text x="16" y="68" font-family="sans-serif" font-size="6.5" fill="#555" letter-spacing="0.5">Domicilio</text>
+  <rect x="16" y="72" width="200" height="7" rx="2" fill="#c8c0b0"/>
+  <rect x="16" y="84" width="160" height="7" rx="2" fill="#c8c0b0"/>
+  <!-- Chip / NFC zone -->
+  <rect x="248" y="58" width="70" height="52" rx="6" fill="none" stroke="rgba(26,58,107,0.25)" stroke-width="1" stroke-dasharray="4 2"/>
+  <rect x="258" y="68" width="50" height="34" rx="3" fill="rgba(255,200,50,0.2)" stroke="rgba(200,150,30,0.4)" stroke-width="0.8"/>
+  <line x1="258" y1="80" x2="308" y2="80" stroke="rgba(200,150,30,0.4)" stroke-width="0.5"/>
+  <line x1="258" y1="88" x2="308" y2="88" stroke="rgba(200,150,30,0.4)" stroke-width="0.5"/>
+  <line x1="276" y1="68" x2="276" y2="102" stroke="rgba(200,150,30,0.4)" stroke-width="0.5"/>
+  <line x1="290" y1="68" x2="290" y2="102" stroke="rgba(200,150,30,0.4)" stroke-width="0.5"/>
+  <text x="283" y="122" font-family="sans-serif" font-size="5.5" fill="#aaa" text-anchor="middle">NFC</text>
+  <!-- Fingerprint area -->
+  <rect x="16" y="112" width="68" height="50" rx="4" fill="rgba(0,0,0,0.04)" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>
+  <text x="50" y="140" font-family="sans-serif" font-size="6" fill="#bbb" text-anchor="middle">HUELLA</text>
+  <!-- Barcode lines -->
+  <g transform="translate(100,116)">
+    <rect x="0"  y="0" width="2"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="4"  y="0" width="4"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="10" y="0" width="1"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="13" y="0" width="3"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="18" y="0" width="2"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="22" y="0" width="5"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="29" y="0" width="1"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="32" y="0" width="3"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="37" y="0" width="2"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="41" y="0" width="4"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="47" y="0" width="1"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="50" y="0" width="3"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="55" y="0" width="2"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="59" y="0" width="4"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="65" y="0" width="1"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="68" y="0" width="3"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="73" y="0" width="2"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="77" y="0" width="5"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="84" y="0" width="1"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="87" y="0" width="3"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="92" y="0" width="2"  height="36" fill="#333" opacity="0.5"/>
+    <rect x="96" y="0" width="4"  height="36" fill="#333" opacity="0.5"/>
+  </g>
+  <!-- MRZ lines -->
+  <rect x="0" y="182" width="340" height="14" fill="rgba(0,0,0,0.04)"/>
+  <text x="10" y="192" font-family="monospace" font-size="7" fill="#888" letter-spacing="1">
+    IDESP12345678X&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+  </text>
+  <rect x="0" y="196" width="340" height="14" fill="rgba(0,0,0,0.04)"/>
+  <text x="10" y="206" font-family="monospace" font-size="7" fill="#888" letter-spacing="1">
+    8001019M9912315ESP&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;0
+  </text>
+</svg>`;
+
+    // Passport sample (single photo page)
+    const PASSPORT_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 340" width="160" height="226"
+  style="display:block;max-width:100%;border-radius:8px;">
+  <rect width="240" height="340" rx="10" fill="#1a3a6b"/>
+  <!-- Cover emblem area -->
+  <circle cx="120" cy="110" r="48" fill="none" stroke="rgba(255,215,0,0.35)" stroke-width="1"/>
+  <circle cx="120" cy="110" r="38" fill="none" stroke="rgba(255,215,0,0.25)" stroke-width="0.5"/>
+  <!-- Crown placeholder -->
+  <polygon points="100,96 120,80 140,96" fill="rgba(255,215,0,0.4)"/>
+  <rect x="96" y="96" width="48" height="28" rx="2" fill="rgba(255,215,0,0.3)"/>
+  <!-- Text lines -->
+  <text x="120" y="180" font-family="serif" font-size="10" font-weight="bold"
+    fill="rgba(255,215,0,0.7)" text-anchor="middle" letter-spacing="2">ESPAÑA</text>
+  <text x="120" y="196" font-family="sans-serif" font-size="7" fill="rgba(255,255,255,0.5)"
+    text-anchor="middle" letter-spacing="1.5">PASAPORTE · PASSPORT</text>
+  <!-- MRZ area -->
+  <rect x="10" y="290" width="220" height="12" rx="2" fill="rgba(0,0,0,0.3)"/>
+  <rect x="10" y="306" width="220" height="12" rx="2" fill="rgba(0,0,0,0.3)"/>
+  <text x="14" y="300" font-family="monospace" font-size="6.5" fill="rgba(255,255,255,0.35)" letter-spacing="1">P&lt;ESPAPEREZ&lt;&lt;GARCIA&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</text>
+  <text x="14" y="316" font-family="monospace" font-size="6.5" fill="rgba(255,255,255,0.35)" letter-spacing="1">AB123456&lt;ESP8001010M2512315&lt;&lt;&lt;&lt;&lt;&lt;&lt;</text>
+</svg>`;
+
+    // NIE (same layout as DNI, different header text)
+    const NIE_FRONT_SVG = DNI_FRONT_SVG.replace(
+      'DOCUMENTO NACIONAL DE IDENTIDAD',
+      'NÚMERO DE IDENTIDAD DE EXTRANJERO');
+    const NIE_BACK_SVG  = DNI_BACK_SVG.replace(
+      'DOCUMENTO NACIONAL DE IDENTIDAD · REVERSO',
+      'NÚMERO DE IDENTIDAD DE EXTRANJERO · REVERSO');
+
+    // Driver licence (simplified)
+    const DRIVER_FRONT_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 214" width="300" height="189"
+  style="display:block;max-width:100%;border-radius:8px;">
+  <rect width="340" height="214" rx="12" fill="#eef2f7"/>
+  <!-- Header -->
+  <rect width="340" height="44" rx="12" fill="#1a4a8b"/>
+  <rect y="24" width="340" height="20" fill="#1a4a8b"/>
+  <rect x="0" y="0" width="12" height="44" rx="12" fill="#c60b1e"/>
+  <text x="26" y="16" font-family="sans-serif" font-size="9" font-weight="bold"
+    fill="#fff" letter-spacing="1.5">ESPAÑA · UE</text>
+  <text x="26" y="32" font-family="sans-serif" font-size="7.5" fill="rgba(255,255,255,0.85)"
+    letter-spacing="1">PERMISO DE CONDUCCIÓN</text>
+  <!-- Photo placeholder -->
+  <rect x="16" y="56" width="68" height="86" rx="4" fill="#d0d8e4"/>
+  <text x="50" y="102" font-family="sans-serif" font-size="8" fill="#888" text-anchor="middle">FOTO</text>
+  <!-- Fields -->
+  <rect x="100" y="62" width="120" height="7" rx="2" fill="#c8d0da"/>
+  <rect x="100" y="76" width="100" height="7" rx="2" fill="#c8d0da"/>
+  <text x="100" y="102" font-family="sans-serif" font-size="6" fill="#555">Número de permiso</text>
+  <rect x="100" y="106" width="90" height="7" rx="2" fill="#c8d0da"/>
+  <text x="100" y="124" font-family="sans-serif" font-size="6" fill="#555">Fecha de caducidad</text>
+  <rect x="100" y="128" width="70" height="7" rx="2" fill="#c8d0da"/>
+  <!-- Categorías -->
+  <text x="16" y="162" font-family="sans-serif" font-size="6" fill="#888">Categorías habilitadas</text>
+  <rect x="16" y="166" width="20" height="14" rx="3" fill="rgba(26,74,139,0.2)" stroke="rgba(26,74,139,0.4)" stroke-width="0.8"/>
+  <text x="26" y="177" font-family="sans-serif" font-size="7" fill="#1a4a8b" text-anchor="middle" font-weight="bold">B</text>
+  <rect x="40" y="166" width="20" height="14" rx="3" fill="rgba(26,74,139,0.1)" stroke="rgba(26,74,139,0.3)" stroke-width="0.8"/>
+  <text x="50" y="177" font-family="sans-serif" font-size="7" fill="#1a4a8b" text-anchor="middle">AM</text>
+</svg>`;
+
+    const DRIVER_BACK_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 214" width="300" height="189"
+  style="display:block;max-width:100%;border-radius:8px;">
+  <rect width="340" height="214" rx="12" fill="#eef2f7"/>
+  <rect width="340" height="44" rx="12" fill="#1a4a8b"/>
+  <rect y="24" width="340" height="20" fill="#1a4a8b"/>
+  <rect x="0" y="0" width="12" height="44" rx="12" fill="#c60b1e"/>
+  <text x="26" y="32" font-family="sans-serif" font-size="7.5" fill="rgba(255,255,255,0.85)"
+    letter-spacing="1">PERMISO DE CONDUCCIÓN · REVERSO</text>
+  <!-- Table header -->
+  <rect x="10" y="54" width="320" height="14" rx="2" fill="rgba(26,74,139,0.15)"/>
+  <text x="16" y="65" font-family="sans-serif" font-size="6.5" fill="#1a4a8b">Cat.</text>
+  <text x="52" y="65" font-family="sans-serif" font-size="6.5" fill="#1a4a8b">Desde</text>
+  <text x="100" y="65" font-family="sans-serif" font-size="6.5" fill="#1a4a8b">Hasta</text>
+  <text x="150" y="65" font-family="sans-serif" font-size="6.5" fill="#1a4a8b">Restricciones</text>
+  <!-- Table rows -->
+  <rect x="10" y="68" width="320" height="11" rx="0" fill="rgba(0,0,0,0.02)"/>
+  <text x="16" y="77" font-family="sans-serif" font-size="6" fill="#333">B</text>
+  <rect x="48" y="70" width="36" height="6" rx="1" fill="#c8d0da"/>
+  <rect x="96" y="70" width="36" height="6" rx="1" fill="#c8d0da"/>
+  <rect x="146" y="70" width="80" height="6" rx="1" fill="#c8d0da"/>
+  <rect x="10" y="79" width="320" height="11" rx="0" fill="rgba(0,0,0,0.02)"/>
+  <text x="16" y="88" font-family="sans-serif" font-size="6" fill="#333">AM</text>
+  <rect x="48" y="81" width="36" height="6" rx="1" fill="#c8d0da"/>
+  <rect x="96" y="81" width="36" height="6" rx="1" fill="#c8d0da"/>
+  <!-- Barcode -->
+  <g transform="translate(10,110)">
+    <rect x="0"  y="0" width="2"  height="50" fill="#333" opacity="0.4"/>
+    <rect x="4"  y="0" width="4"  height="50" fill="#333" opacity="0.4"/>
+    <rect x="10" y="0" width="1"  height="50" fill="#333" opacity="0.4"/>
+    <rect x="13" y="0" width="3"  height="50" fill="#333" opacity="0.4"/>
+    <rect x="18" y="0" width="2"  height="50" fill="#333" opacity="0.4"/>
+    <rect x="22" y="0" width="5"  height="50" fill="#333" opacity="0.4"/>
+    <rect x="29" y="0" width="1"  height="50" fill="#333" opacity="0.4"/>
+    <rect x="32" y="0" width="3"  height="50" fill="#333" opacity="0.4"/>
+    <rect x="37" y="0" width="2"  height="50" fill="#333" opacity="0.4"/>
+  </g>
+</svg>`;
+
+    // ── Doc-type config ──────────────────────────────────────────────────────
+    const DOC_TYPES = {
+      passport: {
+        title:    'Pasaporte',
+        subtitle: 'Envío de imagen',
+        sides: [
+          { slot: 'front', label: 'Página de datos', sample: PASSPORT_SVG },
+        ],
+      },
+      dni: {
+        title:    'DNI',
+        subtitle: 'Envío de imágenes',
+        sides: [
+          { slot: 'front', label: 'Anverso — cara con foto', sample: DNI_FRONT_SVG },
+          { slot: 'back',  label: 'Reverso',                 sample: DNI_BACK_SVG  },
+        ],
+      },
+      nie: {
+        title:    'NIE',
+        subtitle: 'Envío de imágenes',
+        sides: [
+          { slot: 'front', label: 'Anverso — cara con foto', sample: NIE_FRONT_SVG },
+          { slot: 'back',  label: 'Reverso',                 sample: NIE_BACK_SVG  },
+        ],
+      },
+      driver: {
+        title:    'Permiso de conducir',
+        subtitle: 'Envío de imágenes',
+        sides: [
+          { slot: 'front', label: 'Anverso — cara con foto', sample: DRIVER_FRONT_SVG },
+          { slot: 'back',  label: 'Reverso',                 sample: DRIVER_BACK_SVG  },
+        ],
+      },
+    };
+
+    // ── Runtime state ────────────────────────────────────────────────────────
+    const params    = new URLSearchParams(window.location.search);
+    const id        = params.get('id');
+    const docTypeKey= params.get('docType') || 'dni';
     const serverUrl = window.location.origin;
-    let selectedFile = null;
-    let photoCount = 0;
+
+    const docCfg    = DOC_TYPES[docTypeKey] || DOC_TYPES.dni;
+    const totalSides= docCfg.sides.length;
+    let   sideIndex = 0;       // which side we're currently capturing
+    let   selectedFile  = null;
+    let   currentRotation = 0; // degrees
+
+    // ── Init page ────────────────────────────────────────────────────────────
+    document.getElementById('doc-title').textContent    = docCfg.title;
+    document.getElementById('doc-subtitle').textContent = docCfg.subtitle;
 
     if (!id) {
-      document.getElementById('status').textContent = 'Enlace no válido.';
-      document.getElementById('status').className = 'error';
+      setStatus('Enlace no válido.', 'error');
     } else {
-      fetch(`${serverUrl}/api/mobile-ready/${id}`);
+      fetch(`${serverUrl}/api/mobile-ready/${id}`)
+        .catch(e => console.error('Notify server error', e));
+
+      // Show intro screen first
+      showIntro();
+    }
+
+    function showIntro() {
+      const introScreen = document.getElementById('intro-screen');
+      const introMockups = document.getElementById('intro-mockups');
+      const introTitle = document.getElementById('intro-title');
+      
+      introScreen.style.display = 'flex';
+      
+      introTitle.textContent = totalSides > 1 ? `Se requieren ${totalSides} fotografías` : 'Se requiere 1 fotografía';
+      
+      introMockups.innerHTML = '';
+      docCfg.sides.forEach(side => {
+        // Wrap each sample to define max-width
+        introMockups.innerHTML += `
+          <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
+            <div style="font-size:0.5rem; letter-spacing:0.2em; text-transform:uppercase; color:rgba(201,168,76,0.5); margin-bottom:4px;">${side.label}</div>
+            ${side.sample}
+          </div>
+        `;
+      });
+    }
+
+    function startCapture() {
+      document.getElementById('intro-screen').style.display = 'none';
+      document.getElementById('capture-screen').style.display = 'flex';
+      
+      if (totalSides > 1) {
+        document.getElementById('steps-wrap').style.display = 'flex';
+      }
+      renderSide(0);
+    }
+
+    function renderSide(idx) {
+      sideIndex       = idx;
+      selectedFile    = null;
+      currentRotation = 0;
+
+      const side = docCfg.sides[idx];
+
+      // Update step pills
+      for (let i = 0; i < totalSides; i++) {
+        const pill = document.getElementById(`step-${i}`);
+        if (!pill) continue;
+        pill.className = 'step-pill ' + (i < idx ? 'done' : i === idx ? 'active' : '');
+      }
+
+      // Side label
+      document.getElementById('side-label').textContent = side.label;
+
+      // Sample SVG
+      document.getElementById('sample-img-container').innerHTML = side.sample;
+
+      // Reset photo area
+      resetPhotoArea();
+      setStatus('');
+
+      // Update send button label
+      const btnSend = document.getElementById('btn-send');
+      const isLast  = idx === totalSides - 1;
+      btnSend.textContent = isLast ? 'Enviar fotografía' : 'Enviar y continuar';
+    }
+
+    function resetPhotoArea() {
+      document.getElementById('preview').src = '';
+      document.getElementById('preview').style.transform = '';
+      document.getElementById('preview-wrap').style.display = 'none';
+      document.getElementById('placeholder').style.display = 'flex';
+      document.getElementById('btn-send').style.display = 'none';
+      document.getElementById('btn-send').disabled = false;
+      document.getElementById('btn-send').style.opacity = '1';
+      document.getElementById('camera-input').value = '';
+      document.getElementById('gallery-input').value = '';
+      selectedFile    = null;
+      currentRotation = 0;
+    }
+
+    function rotatePreview() {
+      currentRotation = (currentRotation + 90) % 360;
+      document.getElementById('preview').style.transform =
+        `rotate(${currentRotation}deg)`;
     }
 
     function handleFile(file) {
       if (!file) return;
       selectedFile = file;
+      currentRotation = 0;
       const preview = document.getElementById('preview');
+      preview.style.transform = '';
       preview.src = URL.createObjectURL(file);
       document.getElementById('placeholder').style.display = 'none';
       document.getElementById('preview-wrap').style.display = 'block';
       document.getElementById('btn-send').style.display = 'block';
-      document.getElementById('status').textContent = '';
-      document.getElementById('status').className = '';
+      setStatus('');
     }
 
     document.getElementById('camera-input').addEventListener('change', e => handleFile(e.target.files[0]));
@@ -286,56 +754,103 @@
 
     function sendPhoto() {
       if (!selectedFile) return;
-      const status = document.getElementById('status');
-      const btn = document.getElementById('btn-send');
+      const btn  = document.getElementById('btn-send');
+      const slot = docCfg.sides[sideIndex].slot;
 
-      status.textContent = 'Enviando...';
-      status.className = 'uploading';
+      setStatus('Enviando...', 'uploading');
       btn.disabled = true;
       btn.style.opacity = '0.5';
 
-      const formData = new FormData();
-      formData.append('photo', selectedFile);
+      // If the user rotated the image, we need to bake the rotation into the
+      // file before uploading, so the server receives the correct orientation.
+      applyRotationToFile(selectedFile, currentRotation)
+        .then(finalFile => {
+          const formData = new FormData();
+          formData.append('photo', finalFile);
+          formData.append('slot', slot);
 
-      fetch(`${serverUrl}/api/upload/${id}`, { method: 'POST', body: formData })
+          return fetch(`${serverUrl}/api/upload/${id}`, { method: 'POST', body: formData });
+        })
         .then(r => r.json())
         .then(data => {
           if (data.ok) {
-            photoCount++;
-            document.getElementById('count').textContent = photoCount;
-            document.getElementById('counter').style.display = 'block';
-            status.textContent = 'Fotografía enviada';
-            status.className = 'success';
-            btn.style.display = 'none';
-            document.getElementById('btn-another').style.display = 'block';
+            const nextIdx = sideIndex + 1;
+            if (nextIdx < totalSides) {
+              setStatus('Foto enviada. Prepara el ' +
+                (nextIdx === 1 ? 'reverso' : 'siguiente lado') + '.', 'success');
+              setTimeout(() => renderSide(nextIdx), 900);
+            } else {
+              showDone();
+            }
           } else {
-            status.textContent = 'Error al enviar';
-            status.className = 'error';
+            setStatus('Error al enviar', 'error');
             btn.disabled = false;
             btn.style.opacity = '1';
           }
         })
         .catch(() => {
-          status.textContent = 'Error de conexión';
-          status.className = 'error';
+          setStatus('Error de conexión', 'error');
           btn.disabled = false;
           btn.style.opacity = '1';
         });
     }
 
-    function resetForm() {
-      selectedFile = null;
-      document.getElementById('camera-input').value = '';
-      document.getElementById('gallery-input').value = '';
-      document.getElementById('preview').src = '';
+    /**
+     * Returns a new Blob/File with the given rotation baked in via Canvas.
+     * If rotation is 0, returns the original file unchanged.
+     */
+    function applyRotationToFile(file, degrees) {
+      if (degrees === 0) return Promise.resolve(file);
+
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const rad     = (degrees * Math.PI) / 180;
+          const sin     = Math.abs(Math.sin(rad));
+          const cos     = Math.abs(Math.cos(rad));
+          const w       = img.width * cos + img.height * sin;
+          const h       = img.width * sin + img.height * cos;
+
+          const canvas  = document.createElement('canvas');
+          canvas.width  = Math.round(w);
+          canvas.height = Math.round(h);
+
+          const ctx     = canvas.getContext('2d');
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate(rad);
+          ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+          canvas.toBlob(blob => {
+            if (!blob) { reject(new Error('Canvas toBlob failed')); return; }
+            resolve(new File([blob], file.name, { type: file.type || 'image/jpeg' }));
+          }, file.type || 'image/jpeg', 0.92);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+        img.src = url;
+      });
+    }
+
+    function showDone() {
+      document.getElementById('placeholder').style.display = 'none';
       document.getElementById('preview-wrap').style.display = 'none';
-      document.getElementById('placeholder').style.display = 'flex';
+      document.querySelector('.btn-row').style.display = 'none';
       document.getElementById('btn-send').style.display = 'none';
-      document.getElementById('btn-send').disabled = false;
-      document.getElementById('btn-send').style.opacity = '1';
-      document.getElementById('btn-another').style.display = 'none';
-      document.getElementById('status').textContent = '';
-      document.getElementById('status').className = '';
+      document.getElementById('sample-wrap').style.display = 'none';
+      document.getElementById('side-label').style.display = 'none';
+      document.getElementById('steps-wrap').style.display = 'none';
+      setStatus('');
+
+      const doneText = totalSides > 1 ? 'Documento enviado' : 'Fotografía enviada';
+      document.getElementById('done-text').textContent = doneText;
+      document.getElementById('done-screen').style.display = 'flex';
+    }
+
+    function setStatus(msg, cls) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className   = cls || '';
     }
   </script>
 </body>

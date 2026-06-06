@@ -6,6 +6,12 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 
+const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+const PORT       = process.env.PORT       || cfg.port      || 3456;
+const HOST       = process.env.HOST       || cfg.host      || '0.0.0.0';
+const PUBLIC_URL = (process.env.PUBLIC_URL || cfg.publicUrl || `http://localhost:${PORT}`)
+  .replace(/\/$/, '');
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -26,11 +32,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Generate a new session ID
 app.get('/api/session', (req, res) => {
-  res.json({ id: uuidv4() });
+  res.json({ id: uuidv4(), publicUrl: PUBLIC_URL });
 });
 
-// Mobile upload page
+// Expose public URL so the widget can build QR codes correctly
+app.get('/api/config', (req, res) => {
+  res.json({ publicUrl: PUBLIC_URL });
+});
+
+// Mobile upload page — no-cache so phones always receive the latest version
 app.get('/upload', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'public', 'upload.html'));
 });
 
@@ -53,8 +67,11 @@ app.post('/api/upload/:id', upload.single('photo'), (req, res) => {
   const newPath = path.join(UPLOADS_DIR, newName);
   fs.renameSync(req.file.path, newPath);
 
+  // 'slot' is an optional field sent by the mobile page ('front' or 'back')
+  const slot = typeof req.body.slot === 'string' ? req.body.slot : undefined;
+
   const photoUrl = `/uploads/${newName}`;
-  io.to(id).emit('photo-ready', { url: photoUrl });
+  io.to(id).emit('photo-ready', { url: photoUrl, slot });
   res.json({ ok: true, url: photoUrl });
 });
 
@@ -65,6 +82,4 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3456;
-const HOST = process.env.HOST || '0.0.0.0';
-server.listen(PORT, HOST, () => console.log(`mobileupload running on http://${HOST}:${PORT}`));
+server.listen(PORT, HOST, () => console.log(`mobileupload running on ${PUBLIC_URL}  (binding ${HOST}:${PORT})`));
