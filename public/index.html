@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MobileUpload — Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Montserrat:wght@200;300;400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background-color: #0d0d0d;
+      background-image:
+        radial-gradient(ellipse at 15% 40%, rgba(184,142,40,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 60%, rgba(184,142,40,0.06) 0%, transparent 55%);
+      font-family: 'Montserrat', sans-serif;
+      color: #c9a84c;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    .page {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center;
+      width: 100%; max-width: 480px;
+    }
+
+    .ornament {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 32px; opacity: 0.5; width: 100%;
+    }
+    .ornament-line {
+      flex: 1; height: 1px;
+      background: linear-gradient(to right, transparent, #c9a84c);
+    }
+    .ornament-line.r { background: linear-gradient(to left, transparent, #c9a84c); }
+    .ornament-diamond {
+      width: 8px; height: 8px;
+      border: 1px solid #c9a84c;
+      transform: rotate(45deg);
+    }
+
+    h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.4rem, 6vw, 3.2rem);
+      font-weight: 300;
+      letter-spacing: 0.18em;
+      background: linear-gradient(135deg, #9a7a28 0%, #e8c96d 40%, #f5e090 55%, #c9a84c 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      margin-bottom: 6px; text-align: center;
+    }
+
+    .domain {
+      font-size: 0.6rem; font-weight: 200;
+      letter-spacing: 0.5em; text-transform: uppercase;
+      color: #7a6030; margin-bottom: 12px;
+    }
+
+    .description {
+      font-size: 0.65rem; font-weight: 300;
+      letter-spacing: 0.15em; line-height: 1.9;
+      color: rgba(201,168,76,0.45);
+      text-align: center; margin-bottom: 48px;
+      max-width: 340px;
+    }
+
+    #uploader { width: 100%; display: flex; justify-content: center; }
+
+    .footer-divider {
+      display: flex; align-items: center; gap: 8px;
+      width: 100%; margin-top: 52px; margin-bottom: 20px; opacity: 0.25;
+    }
+    .footer-divider-line { flex: 1; height: 1px; background: rgba(201,168,76,0.4); }
+    .footer-divider-dot { width: 3px; height: 3px; border-radius: 50%; background: #c9a84c; }
+
+    .footer {
+      font-size: 0.52rem; font-weight: 200;
+      letter-spacing: 0.35em; text-transform: uppercase;
+      color: rgba(201,168,76,0.25);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="ornament">
+      <div class="ornament-line"></div>
+      <div class="ornament-diamond"></div>
+      <div class="ornament-line r"></div>
+    </div>
+
+    <h1>MobileUpload</h1>
+    <div class="domain">vendeoro.com</div>
+
+    <p class="description">
+      Escanea el código QR con tu dispositivo móvil<br/>
+      para enviar fotografías directamente a esta pantalla
+    </p>
+
+    <div id="uploader"></div>
+
+    <div class="footer-divider">
+      <div class="footer-divider-line"></div>
+      <div class="footer-divider-dot"></div>
+      <div class="footer-divider-line"></div>
+    </div>
+    <div class="footer">Envío de imágenes · Red local</div>
+  </div>
+
+  <script src="/widget.js"></script>
+  <script>
+    MobileUpload.init('uploader', { serverUrl: window.location.origin })
+      .then(urls => console.log('Fotos recibidas:', urls));
+  </script>
+</body>
+</html>
