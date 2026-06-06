@@ -48,10 +48,11 @@ mobileupload/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/session` | Creates a new session. Returns `{ id: "<uuid>" }`. |
-| `GET` | `/upload` | Serves the mobile upload page (`upload.html`). |
+| `GET` | `/api/session` | Creates a new session. Returns `{ id: "<uuid>", publicUrl: "<url>" }`. |
+| `GET` | `/api/config` | Exposes the public URL so the widget can build QR codes correctly. Returns `{ publicUrl: "<url>" }`. |
+| `GET` | `/upload` | Serves the mobile upload page (`upload.html`). Uses no-cache headers so phones always receive the latest version. |
 | `GET` | `/api/mobile-ready/:id` | Called by the mobile page on load. Emits `mobile-connected` to the desktop via Socket.IO. |
-| `POST` | `/api/upload/:id` | Receives a photo (`multipart/form-data`, field `photo`). Saves it with a timestamped filename to avoid collisions across multiple uploads in the same session. Emits `photo-ready` with the file URL to the desktop. |
+| `POST` | `/api/upload/:id` | Receives a photo (`multipart/form-data`, field `photo`) and an optional `slot` field (e.g., 'front' or 'back'). Saves it with a timestamped filename to avoid collisions. Emits `photo-ready` to the desktop. |
 
 ### Socket.IO events
 
@@ -63,12 +64,22 @@ mobileupload/
 
 ### Configuration
 
-Set these environment variables before starting the server:
+The server can be configured via environment variables or a `config.json` file in the project root. If the file is not present, environment variables are used. The `config.json` supports the following properties:
+```json
+{
+  "port": 3456,
+  "host": "0.0.0.0",
+  "publicUrl": "http://192.168.1.100:3456"
+}
+```
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3456` | TCP port to listen on. |
-| `HOST` | `192.168.1.20` | IP address to bind to. Use the LAN IP so mobile devices can reach the server. |
+Set these environment variables before starting the server (they take precedence over `config.json`):
+
+| Variable | `config.json` Key | Default | Description |
+|----------|-------------------|---------|-------------|
+| `PORT` | `port` | `3456` | TCP port to listen on. |
+| `HOST` | `host` | `'0.0.0.0'` | IP address to bind to. |
+| `PUBLIC_URL` | `publicUrl` | `` `http://localhost:${PORT}` `` | The base URL accessible by phones to upload images. |
 
 ### Starting the server
 
@@ -127,23 +138,28 @@ This is the main integration point for host applications. It is a self-contained
 
 ### `public/index.html` — Demo desktop page
 
-A standalone demonstration page that embeds the widget. It initialises `MobileUpload` against `window.location.origin`, so it works out of the box when opened from the same server. Styled with the VendeOro dark-gold design language.
+A standalone demonstration page that embeds the widget. It reads the `docType` URL parameter (`?docType=dni|nie|driver|passport`):
+- **If no `docType` is present**, it shows a selector menu with the available document types.
+- **If a `docType` is given**, it launches the widget immediately in that specific mode requesting specific photos (e.g., 2 photos for front/back).
+
+It initialises `MobileUpload` against `window.location.origin`, so it works out of the box when opened from the same server. Styled with the VendeOro dark-gold design language.
 
 Open it in a desktop browser at `http://<server>:3456/`.
 
 ### `public/upload.html` — Mobile upload page
 
-Opened on the user's phone by scanning the QR code. The session ID is passed as the `id` query parameter.
+Opened on the user's phone by scanning the QR code. It uses query parameters such as the session `id` and `docType` to dictate the capture flow.
 
 **Flow on the phone:**
 
 1. On load, calls `GET /api/mobile-ready/:id` to signal the desktop.
-2. Presents two buttons: **Cámara** (opens the device camera directly) and **Galería** (opens the photo gallery).
-3. Shows a preview of the selected image.
-4. **Send** button posts the image to `POST /api/upload/:id`.
-5. After a successful upload the user can tap **+ Add another photo** to repeat the process within the same session, without scanning the QR code again.
+2. Based on `docType`, an intro screen explains the requirements (e.g., 2 photos for DNI/NIE/Driver's License, or 1 photo for Passport) and displays an SVG mockup of the document snippet to guide the user.
+3. Presents two buttons: **Cámara** (opens the device camera directly) and **Galería** (opens the photo gallery).
+4. Shows a preview of the selected image, with an option to rotate the image.
+5. **Send** button posts the image and an optional `slot` ('front'/'back') field to `POST /api/upload/:id`.
+6. Handles a multi-step completion if the document type requires multiple photos. Displays a green confirmation screen when all required parts are successfully uploaded.
 
-The page tracks how many photos have been sent and displays a counter.
+The page dynamically tracks the process and updates its step indicators.
 
 ---
 
