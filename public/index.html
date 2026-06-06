@@ -78,6 +78,69 @@
 
     #uploader { width: 100%; display: flex; justify-content: center; }
 
+    /* ── Selector panel (shown when no docType is in the URL) ── */
+    .selector {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .sel-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      padding: 16px 18px;
+      border: 1px solid rgba(201,168,76,0.18);
+      border-radius: 4px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, background 0.2s;
+      cursor: pointer;
+    }
+    .sel-item:hover {
+      border-color: rgba(201,168,76,0.5);
+      background: rgba(201,168,76,0.04);
+    }
+
+    .sel-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .sel-doc-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.05rem;
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      background: linear-gradient(135deg, #9a7a28 0%, #e8c96d 40%, #f5e090 55%, #c9a84c 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+
+    .sel-badge {
+      font-size: 0.45rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(201,168,76,0.4);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 2px;
+      padding: 2px 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .sel-url {
+      font-size: 0.55rem;
+      font-weight: 200;
+      letter-spacing: 0.08em;
+      color: rgba(201,168,76,0.35);
+      word-break: break-all;
+      font-family: 'Courier New', monospace;
+    }
+
     .footer-divider {
       display: flex; align-items: center; gap: 8px;
       width: 100%; margin-top: 52px; margin-bottom: 20px; opacity: 0.25;
@@ -104,11 +167,15 @@
     <h1>MobileUpload</h1>
     <div class="domain">vendeoro.com</div>
 
-    <p class="description">
+    <p class="description" id="desc">
       Escanea el código QR con tu dispositivo móvil<br/>
       para enviar fotografías directamente a esta pantalla
     </p>
 
+    <!-- Shown when no docType is given -->
+    <div class="selector" id="selector" style="display:none"></div>
+
+    <!-- Shown when a valid docType is given -->
     <div id="uploader"></div>
 
     <div class="footer-divider">
@@ -121,8 +188,61 @@
 
   <script src="/widget.js"></script>
   <script>
-    MobileUpload.init('uploader', { serverUrl: window.location.origin })
-      .then(urls => console.log('Fotos recibidas:', urls));
+    // ── URL parameter ────────────────────────────────────────────────────────
+    // ?docType=dni|nie|driver|passport
+    //
+    // When docType is absent the page shows a selector with the available URLs.
+    // When docType is present the widget launches immediately in that mode.
+    //
+    // Modes:
+    //   dni      — 2 photos (front + back)  Spanish DNI
+    //   nie      — 2 photos (front + back)  NIE
+    //   driver   — 2 photos (front + back)  Permiso de conducir
+    //   passport — 1 photo                  Pasaporte
+
+    const DOC_LABELS = {
+      dni:      { name: 'DNI',                 badge: '2 fotos · anverso + reverso' },
+      nie:      { name: 'NIE',                 badge: '2 fotos · anverso + reverso' },
+      driver:   { name: 'Permiso de conducir', badge: '2 fotos · anverso + reverso' },
+      passport: { name: 'Pasaporte',           badge: '1 foto' },
+    };
+
+    const VALID_DOC_TYPES = Object.keys(DOC_LABELS);
+    const pageParams = new URLSearchParams(window.location.search);
+    const rawDocType = pageParams.get('docType');
+
+    if (VALID_DOC_TYPES.includes(rawDocType)) {
+      // ── Widget mode ──────────────────────────────────────────────────────
+      document.getElementById('desc').textContent =
+        'Escanea el código QR con tu dispositivo móvil para enviar el documento.';
+
+      MobileUpload.init('uploader', { serverUrl: window.location.origin, docType: rawDocType })
+        .then(urls => console.log('Fotos recibidas:', urls));
+
+    } else {
+      // ── Selector mode ────────────────────────────────────────────────────
+      document.getElementById('desc').textContent =
+        'Selecciona el tipo de documento que deseas escanear.';
+
+      const base = window.location.origin + window.location.pathname;
+      const sel  = document.getElementById('selector');
+      sel.style.display = 'flex';
+
+      VALID_DOC_TYPES.forEach(dt => {
+        const { name, badge } = DOC_LABELS[dt];
+        const url = `${base}?docType=${dt}`;
+        const a   = document.createElement('a');
+        a.className = 'sel-item';
+        a.href      = url;
+        a.innerHTML = `
+          <div class="sel-item-header">
+            <span class="sel-doc-name">${name}</span>
+            <span class="sel-badge">${badge}</span>
+          </div>
+          <div class="sel-url">${url}</div>`;
+        sel.appendChild(a);
+      });
+    }
   </script>
 </body>
 </html>
