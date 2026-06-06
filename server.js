@@ -66,5 +66,5 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3456;
-const HOST = process.env.HOST || '192.168.1.20';
+const HOST = process.env.HOST || '0.0.0.0';
 server.listen(PORT, HOST, () => console.log(`mobileupload running on http://${HOST}:${PORT}`));
