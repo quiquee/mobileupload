@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const multer = require('multer');
+const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
@@ -14,7 +15,10 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || cfg.publicUrl || `http://localhost
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+// The widget is embedded from other origins (e.g. the POS app), so the desktop
+// browser makes cross-origin calls to /api/* and opens a cross-origin socket.
+// Allow CORS for both the HTTP routes and the Socket.IO transport.
+const io = new Server(server, { cors: { origin: true, methods: ['GET', 'POST'] } });
 
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -28,6 +32,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
 
+app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Generate a new session ID
