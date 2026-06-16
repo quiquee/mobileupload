@@ -3,3 +3,5 @@ public/uploads/*
 !public/uploads/.gitkeep
 .env
 config.json
+secrets.txt
+mobileupload-debug.log
