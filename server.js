@@ -219,7 +219,7 @@ async function extractDocumentData({ traceId, docType, frontPath, backPath }) {
         'Return this structure with fields populated: ' +
         '{surname, lastName, idNumber, addressLine_1, addressLine_2, postal_code, ' +
         'city, province, country, documentType, countryCode, front, back, microchip}. ' +
-        'Use concise strings and arrays. documentType is one of ["ID", "NIE", "PASSPORT", "DRIVER_LICENSE"]. ' +
+        'Use concise strings and arrays. documentType is one of ["ID", "NIE", "PASSPORT", "DRIVER_LICENSE"]. ' 
     },
     { text: `documentHint=${docType}` }
   ];
