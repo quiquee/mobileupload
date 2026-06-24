@@ -212,7 +212,7 @@ async function extractDocumentData({ traceId, docType, frontPath, backPath }) {
   const parts = [
     {
       text:
-        'You are an OCR and identity-document extraction engine. Return only valid JSON without markdown. Infer as much as possible from the images. Keep null for unknown fields. Return this structure: {documentType,countryCode,front,back,microchip}. Use concise strings and arrays.'
+        'You are an OCR and identity-document extraction engine. Return only valid JSON without markdown. Infer as much as possible from the images. Keep null for unknown fields. Return this structure with fields populated: {surname, lastName,idNumber, addressLine_1, addressLine_2, postal_code,city, province, country,documentType,countryCode,front,back,microchip}. Use concise strings and arrays.'
     },
     { text: `documentHint=${docType}` }
   ];
