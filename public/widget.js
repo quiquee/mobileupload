@@ -73,7 +73,9 @@
         socket.emit('join', id);
 
         socket.on('session-complete', (payload) => {
+          console.log('[MobileUpload] session-complete payload', payload);
           const normalized = normalizeResult(payload, serverUrl, docType, id);
+          console.log('[MobileUpload] resolved result', normalized);
 
           if (!settled) {
             settled = true;

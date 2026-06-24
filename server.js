@@ -145,7 +145,8 @@ app.post(
         id,
         docType,
         front: photos.front,
-        back: photos.back
+        back: photos.back,
+        documentData
       });
       return res.json(payload);
     } catch (err) {
@@ -274,7 +275,9 @@ async function extractDocumentData({ traceId, docType, frontPath, backPath }) {
       return FALLBACK_DOCUMENT_JSON;
     }
 
-    return normalizeGeminiJson(text);
+    const documentData = normalizeGeminiJson(text);
+    logInfo('gemini_extraction_success', { traceId, docType, documentData });
+    return documentData;
   } catch (err) {
     logError('gemini_extraction_failed', {
       traceId,
