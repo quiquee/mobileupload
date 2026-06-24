@@ -5,3 +5,5 @@ public/uploads/*
 config.json
 secrets.txt
 mobileupload-debug.log
+README.claude.md
+.gitignore
