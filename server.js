@@ -23,38 +23,28 @@ if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 const upload = multer({ dest: UPLOADS_DIR, limits: { fileSize: 20 * 1024 * 1024 } });
 
 const FALLBACK_DOCUMENT_JSON = {
-  documentType: 'Documento Nacional de Identidad / National Identity Card',
+  firstName: 'María',
+  lastName: 'García Pérez',
+  documentType: 'ID',
+  idNumber: '12345678A',
+  dateOfBirth: '01-01-1990',
+  dateOfExpiry: '01-01-2030',
+  sex: 'F',
+  nationality: 'ESP',
+  streetName: 'Avenida de Madrid',
+  streetNumber: 'S/N',
+  postalCode: '28001',
+  city: 'Madrid',
+  province: 'Madrid',
+  country: 'España',
   countryCode: 'ES',
-  front: {
-    dniNumber: '12345678A',
-    surnames: ['García', 'Pérez'],
-    name: 'María',
-    sex: 'F',
-    nationality: 'ESP',
-    dateOfBirth: '01-01-1990',
-    dateOfExpiry: '01-01-2030',
-    cardAccessNumber: '987654',
+  additionalDetails: {
+    mrz: 'IDESPCAA000000499999999R<<<<<<8001014F3106028ESP<<<<<<<<<<<1ESPANOLA<ESPANOLA<<CARMEN<<<<<',
     supportNumber: 'AAA111111',
-    visuals: {
-      photo: 'Facial Image',
-      signature: 'Cardholder Signature'
-    }
-  },
-  back: {
-    placeOfBirth: {
-      city: 'Madrid',
-      provinceOrCountry: 'Madrid'
-    },
-    parentsNames: ['Juan', 'Carmen'],
-    address: {
-      street: 'Avenida de Madrid S/N',
-      city: 'Madrid',
-      province: 'Madrid'
-    },
+    cardAccessNumber: '987654',
     issuingAuthority: '28001A00K',
-    mrz: 'IDESPCAA000000499999999R<<<<<<8001014F3106028ESP<<<<<<<<<<<1ESPANOLA<ESPANOLA<<CARMEN<<<<<'
-  },
-  microchip: {
+    placeOfBirth: 'Madrid, Madrid',
+    parentsNames: ['Juan', 'Carmen'],
     biometrics: ['Digital Facial Image', 'Left Index Fingerprint', 'Right Index Fingerprint'],
     certificates: ['Authentication Certificate', 'Electronic Signature Certificate']
   }
@@ -188,15 +178,40 @@ function readGeminiKeyFromSecrets() {
   return line.slice('GEMINI_API_KEY='.length).trim();
 }
 
-function normalizeGeminiJson(text) {
-  const cleaned = text
-    .trim()
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```$/i, '')
-    .trim();
-  return JSON.parse(cleaned);
-}
+const GEMINI_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    firstName:     { type: 'STRING', nullable: true },
+    lastName:      { type: 'STRING', nullable: true },
+    documentType:  { type: 'STRING', nullable: true },
+    idNumber:      { type: 'STRING', nullable: true },
+    dateOfBirth:   { type: 'STRING', nullable: true },
+    dateOfExpiry:  { type: 'STRING', nullable: true },
+    sex:           { type: 'STRING', nullable: true },
+    nationality:   { type: 'STRING', nullable: true },
+    streetName:    { type: 'STRING', nullable: true },
+    streetNumber:  { type: 'STRING', nullable: true },
+    postalCode:    { type: 'STRING', nullable: true },
+    city:          { type: 'STRING', nullable: true },
+    province:      { type: 'STRING', nullable: true },
+    country:       { type: 'STRING', nullable: true },
+    countryCode:   { type: 'STRING', nullable: true },
+    additionalDetails: {
+      type: 'OBJECT',
+      nullable: true,
+      properties: {
+        mrz:              { type: 'STRING', nullable: true },
+        supportNumber:    { type: 'STRING', nullable: true },
+        cardAccessNumber: { type: 'STRING', nullable: true },
+        issuingAuthority: { type: 'STRING', nullable: true },
+        placeOfBirth:     { type: 'STRING', nullable: true },
+        parentsNames:     { type: 'ARRAY',  nullable: true, items: { type: 'STRING' } },
+        biometrics:       { type: 'ARRAY',  nullable: true, items: { type: 'STRING' } },
+        certificates:     { type: 'ARRAY',  nullable: true, items: { type: 'STRING' } }
+      }
+    }
+  }
+};
 
 function readFileAsBase64(filePath) {
   return fs.readFileSync(filePath).toString('base64');
@@ -213,13 +228,12 @@ async function extractDocumentData({ traceId, docType, frontPath, backPath }) {
     {
       text:
         'You are an OCR and identity-document extraction engine. ' +
-        'Return only valid JSON without markdown. ' +
-        'Infer as much as possible from the images. ' +
-        'Keep null for unknown fields. ' +
-        'Return this structure with fields populated: ' +
-        '{surname, lastName, idNumber, addressLine_1, addressLine_2, postal_code, ' +
-        'city, province, country, documentType, countryCode, front, back, microchip}. ' +
-        'Use concise strings and arrays. documentType is one of ["ID", "NIE", "PASSPORT", "DRIVER_LICENSE"]. ' 
+        'Extract all readable fields from the provided document image(s). ' +
+        'documentType must be one of: ID, NIE, PASSPORT, DRIVER_LICENSE. ' +
+        'Infer countryCode (ISO 3166-1 alpha-2) from the document when possible. ' +
+        'Place MRZ, support number, card access number, issuing authority, place of birth, ' +
+        'parents names, biometrics and certificates inside additionalDetails. ' +
+        'Use null for any field that cannot be extracted or inferred.'
     },
     { text: `documentHint=${docType}` }
   ];
@@ -252,7 +266,10 @@ async function extractDocumentData({ traceId, docType, frontPath, backPath }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ role: 'user', parts }],
-          generationConfig: { responseMimeType: 'application/json' }
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseSchema: GEMINI_RESPONSE_SCHEMA
+          }
         })
       }
     );
@@ -282,7 +299,7 @@ async function extractDocumentData({ traceId, docType, frontPath, backPath }) {
       return FALLBACK_DOCUMENT_JSON;
     }
 
-    const documentData = normalizeGeminiJson(text);
+    const documentData = JSON.parse(text);
     logInfo('gemini_extraction_success', { traceId, docType, documentData });
     return documentData;
   } catch (err) {
