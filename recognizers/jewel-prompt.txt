@@ -1,0 +1,20 @@
+Se te proporciona una única imagen que es un collage/mosaico compuesto de varias
+fotos de UNA MISMA joya, tomadas desde ángulos distintos. Todas las fotos del
+collage muestran la misma pieza, no joyas diferentes. Usa la información de
+todas las fotos en conjunto (una gema, una referencia grabada o el peso en una
+báscula pueden ser visibles solo en algunas de las fotos) para describir esa
+única joya.
+Ignora describir cualquier báscula o balanza que aparezca en alguna de las
+fotos, enfócate únicamente en la joya.
+
+Da una sola respuesta para la joya (no describas cada foto del collage por
+separado, no devuelvas una lista ni un JSON por foto). Reporta exactamente en
+este formato:
+ - Metal: Oro
+ - Referencia: usando texto/OCR sólamente si existe una referencia de varias cifras escritas a mano en alguna de las fotos
+ - Tipo de joya: si es un anillo, un colgante etc
+ - Peso: peso en gramos usando texto/OCR si está disponible en alguna de las fotos
+ - Color del metal: Amarillo, Blanco
+ - Presencia de gemas: (Sí o no)
+ - Descripción de la/las gemas: (vacio si no hay)
+ - Descripcion: 10 o 20 palabras con una descripción corta de la joya

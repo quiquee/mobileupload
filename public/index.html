@@ -222,19 +222,59 @@
       }
     }
 
-    .jewel-photos-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    .jewel-photo-strip {
+      display: flex;
       gap: 10px;
-      padding: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
     }
 
-    .jewel-photos-grid img {
-      width: 100%;
-      aspect-ratio: 1 / 1;
+    .jewel-photo-strip img {
+      width: 90px;
+      height: 90px;
       object-fit: cover;
       border-radius: 10px;
+      border: 1px solid var(--line);
       display: block;
+    }
+
+    .jewel-result {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .jewel-result .info-list {
+      grid-template-columns: 1fr;
+    }
+
+    .jewel-item-status {
+      display: inline-block;
+      width: fit-content;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+    }
+
+    .jewel-item-status.ok { color: #6fcf97; border-color: rgba(111, 207, 151, 0.5); }
+    .jewel-item-status.timeout,
+    .jewel-item-status.error { color: #eb9694; border-color: rgba(235, 150, 148, 0.5); }
+    .jewel-item-status.unavailable { color: var(--muted); }
+
+    .jewel-result .raw-text {
+      color: var(--muted);
+      font-size: 0.82rem;
+      white-space: pre-line;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+      margin-top: 2px;
     }
 
     @media (max-width: 640px) {
@@ -295,16 +335,8 @@
       </section>
 
       <section class="panel" id="jewel-result-panel" style="display:none;">
-        <div class="result-grid">
-          <article class="card" style="grid-column: 1 / -1;">
-            <h3>Fotos</h3>
-            <div id="jewel-photos" class="jewel-photos-grid"></div>
-          </article>
-          <article class="info-box">
-            <h3>Datos extraidos (placeholder, sin proveedor aun)</h3>
-            <div id="jewel-info-list" class="info-list"></div>
-          </article>
-        </div>
+        <div id="jewel-photo-strip" class="jewel-photo-strip"></div>
+        <div id="jewel-result" class="jewel-result"></div>
       </section>
     </main>
   </div>
@@ -425,35 +457,71 @@
         .join('');
     }
 
+    const JEWEL_STATUS_LABELS = {
+      ok: 'Reconocido',
+      timeout: 'Tiempo agotado',
+      error: 'Error',
+      unavailable: 'Proveedor no configurado'
+    };
+
+    const JEWEL_FIELD_LABELS = {
+      metal: 'Metal',
+      reference: 'Referencia',
+      jewelType: 'Tipo de joya',
+      weightGrams: 'Peso (g)',
+      metalColor: 'Color del metal',
+      hasGems: 'Presencia de gemas',
+      gemsDescription: 'Descripción de las gemas',
+      description: 'Descripción'
+    };
+
     function renderJewelResult(result) {
       const panel = document.getElementById('jewel-result-panel');
       panel.style.display = 'block';
 
-      const photosEl = document.getElementById('jewel-photos');
-      photosEl.innerHTML = '';
-      (result.photos || []).forEach((url) => {
-        const img = document.createElement('img');
-        img.src = url;
-        img.alt = 'Foto de la joya';
-        photosEl.appendChild(img);
-      });
-
-      const infoList = document.getElementById('jewel-info-list');
-      const data = result.documentData || {};
-      infoList.innerHTML = Object.entries(data)
-        .map(([key, value]) => `
-          <div class="info-item">
-            <div class="label">${key}</div>
-            <div class="value">${formatJewelValue(value)}</div>
-          </div>
-        `)
+      const stripEl = document.getElementById('jewel-photo-strip');
+      stripEl.innerHTML = (result.photos || [])
+        .map((url) => `<img src="${url}" alt="Foto de la joya" />`)
         .join('');
+
+      const resultEl = document.getElementById('jewel-result');
+      const data = result.documentData || { status: 'unavailable', rawText: null, parsed: null };
+      resultEl.innerHTML = renderJewelResultBody(data);
+    }
+
+    function renderJewelResultBody(data) {
+      const fieldsHtml = data.parsed
+        ? Object.entries(data.parsed)
+            .map(([key, value]) => `
+              <div class="info-item">
+                <div class="label">${JEWEL_FIELD_LABELS[key] || key}</div>
+                <div class="value">${formatJewelValue(value)}</div>
+              </div>
+            `)
+            .join('')
+        : '';
+
+      const rawTextHtml = data.rawText
+        ? `<div class="raw-text">${escapeHtml(data.rawText)}</div>`
+        : '';
+
+      return `
+        <span class="jewel-item-status ${data.status}">${JEWEL_STATUS_LABELS[data.status] || data.status}</span>
+        <div class="info-list">${fieldsHtml}</div>
+        ${rawTextHtml}
+      `;
     }
 
     function formatJewelValue(value) {
       if (value === null || value === undefined) return 'No disponible';
-      if (Array.isArray(value)) return value.length ? value.join(', ') : 'No disponible';
+      if (typeof value === 'boolean') return value ? 'Sí' : 'No';
       return String(value);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     function formatAddress(address) {
