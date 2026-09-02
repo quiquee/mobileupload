@@ -222,6 +222,21 @@
       }
     }
 
+    .jewel-photos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .jewel-photos-grid img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      border-radius: 10px;
+      display: block;
+    }
+
     @media (max-width: 640px) {
       body {
         padding: 12px;
@@ -278,6 +293,19 @@
           </article>
         </div>
       </section>
+
+      <section class="panel" id="jewel-result-panel" style="display:none;">
+        <div class="result-grid">
+          <article class="card" style="grid-column: 1 / -1;">
+            <h3>Fotos</h3>
+            <div id="jewel-photos" class="jewel-photos-grid"></div>
+          </article>
+          <article class="info-box">
+            <h3>Datos extraidos (placeholder, sin proveedor aun)</h3>
+            <div id="jewel-info-list" class="info-list"></div>
+          </article>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -292,11 +320,23 @@
 
     const pageParams = new URLSearchParams(window.location.search);
     const docType = pageParams.get('docType');
+    const sessionType = pageParams.get('type') === 'jewel' ? 'jewel' : 'identity_document';
     const validDocTypes = Object.keys(DOC_LABELS);
 
     buildSelector();
 
-    if (validDocTypes.includes(docType)) {
+    if (sessionType === 'jewel') {
+      document.getElementById('title').textContent = 'Joya - fotos + reconocimiento (placeholder)';
+
+      MobileUpload.init('uploader', {
+        serverUrl: window.location.origin,
+        type: 'jewel'
+      }).then((result) => {
+        renderJewelResult(result);
+      }).catch((error) => {
+        document.getElementById('uploader').innerHTML = `<p style="color:#d66e6e">Error: ${error.message}</p>`;
+      });
+    } else if (validDocTypes.includes(docType)) {
       const label = DOC_LABELS[docType];
       document.getElementById('title').textContent = `${label.title} - ${label.subtitle}`;
 
@@ -326,6 +366,12 @@
         link.innerHTML = `<strong>${item.title}</strong><span>${item.subtitle}</span>`;
         selector.appendChild(link);
       });
+
+      const jewelLink = document.createElement('a');
+      jewelLink.className = 'doc-link';
+      jewelLink.href = `${base}?type=jewel`;
+      jewelLink.innerHTML = '<strong>Joya</strong><span>N fotos: reconocimiento (placeholder)</span>';
+      selector.appendChild(jewelLink);
     }
 
     function renderResult(result) {
@@ -377,6 +423,37 @@
           `;
         })
         .join('');
+    }
+
+    function renderJewelResult(result) {
+      const panel = document.getElementById('jewel-result-panel');
+      panel.style.display = 'block';
+
+      const photosEl = document.getElementById('jewel-photos');
+      photosEl.innerHTML = '';
+      (result.photos || []).forEach((url) => {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Foto de la joya';
+        photosEl.appendChild(img);
+      });
+
+      const infoList = document.getElementById('jewel-info-list');
+      const data = result.documentData || {};
+      infoList.innerHTML = Object.entries(data)
+        .map(([key, value]) => `
+          <div class="info-item">
+            <div class="label">${key}</div>
+            <div class="value">${formatJewelValue(value)}</div>
+          </div>
+        `)
+        .join('');
+    }
+
+    function formatJewelValue(value) {
+      if (value === null || value === undefined) return 'No disponible';
+      if (Array.isArray(value)) return value.length ? value.join(', ') : 'No disponible';
+      return String(value);
     }
 
     function formatAddress(address) {

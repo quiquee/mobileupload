@@ -237,12 +237,84 @@
     #status.processing {
       color: var(--gold);
     }
+
+    .jewel-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .jewel-thumb {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--line-soft);
+      background: #0a0f16;
+    }
+
+    .jewel-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .jewel-thumb-btn {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(5, 7, 11, 0.78);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .jewel-thumb-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .jewel-remove-btn {
+      top: 6px;
+      left: 6px;
+    }
+
+    .jewel-rotate-btn {
+      top: 6px;
+      right: 6px;
+    }
+
+    .jewel-add-tile {
+      aspect-ratio: 1 / 1;
+      border-radius: 12px;
+      border: 1px dashed rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      cursor: pointer;
+    }
+
+    .jewel-hint {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 2px;
+    }
   </style>
 </head>
 <body>
   <main class="app">
     <header class="header">
       <nav class="doc-switch" id="doc-switch"></nav>
+      <p class="jewel-hint" id="jewel-hint" hidden>Añade fotos de la joya (toca "+" para cada foto).</p>
     </header>
 
     <section id="cards" class="cards"></section>
@@ -289,8 +361,11 @@
       back: simpleDocSvg('REVERSO')
     };
 
+    const MAX_JEWEL_PHOTOS = 8;
+
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
+    const sessionType = params.get('type') === 'jewel' ? 'jewel' : 'identity_document';
     let currentDocTypeKey = params.get('docType') || 'dni';
     let docCfg = DOC_TYPES[currentDocTypeKey] || DOC_TYPES.dni;
     const serverUrl = window.location.origin;
@@ -299,11 +374,15 @@
     const pickerEl = document.getElementById('picker');
     const finishBtn = document.getElementById('btn-finish');
     const docSwitchEl = document.getElementById('doc-switch');
+    const jewelHintEl = document.getElementById('jewel-hint');
 
+    // identity_document mode state
     const selectedBySlot = {};
     let activeSlot = null;
 
-    renderDocSwitch();
+    // jewel mode state
+    const jewelPhotos = [];
+
     if (!id) {
       setStatus('Enlace no valido.', 'error');
       finishBtn.disabled = true;
@@ -311,11 +390,15 @@
       fetch(`${serverUrl}/api/mobile-ready/${id}`).catch(() => undefined);
     }
 
-    renderCards();
+    if (sessionType === 'jewel') {
+      initJewelMode();
+    } else {
+      initIdentityDocumentMode();
+    }
 
     pickerEl.addEventListener('change', async (event) => {
       const file = event.target.files && event.target.files[0];
-      if (!file || !activeSlot) return;
+      if (!file) return;
 
       let finalFile = file;
       try {
@@ -324,21 +407,45 @@
         console.error('No se pudo normalizar la orientacion, se usa el archivo original:', err);
       }
 
-      const prev = selectedBySlot[activeSlot];
-      if (prev && prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      if (sessionType === 'jewel') {
+        addJewelPhoto(finalFile);
+      } else {
+        setIdentityDocumentSlotPhoto(finalFile);
+      }
 
-      selectedBySlot[activeSlot] = {
-        file: finalFile,
-        previewUrl: URL.createObjectURL(finalFile)
-      };
-
-      renderCards();
       event.target.value = '';
       setStatus('');
     });
 
     finishBtn.addEventListener('click', async () => {
       if (!id) return;
+      if (sessionType === 'jewel') {
+        await submitJewel();
+      } else {
+        await submitIdentityDocument();
+      }
+    });
+
+    function initIdentityDocumentMode() {
+      renderDocSwitch();
+      renderCards();
+    }
+
+    function setIdentityDocumentSlotPhoto(file) {
+      if (!activeSlot) return;
+
+      const prev = selectedBySlot[activeSlot];
+      if (prev && prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+
+      selectedBySlot[activeSlot] = {
+        file,
+        previewUrl: URL.createObjectURL(file)
+      };
+
+      renderCards();
+    }
+
+    async function submitIdentityDocument() {
       if (!allRequiredSelected()) return;
 
       finishBtn.disabled = true;
@@ -353,11 +460,60 @@
         }
       });
 
+      await submitCapture(`${serverUrl}/api/complete/${id}`, body);
+    }
+
+    function initJewelMode() {
+      jewelHintEl.hidden = false;
+      renderJewelGrid();
+    }
+
+    function addJewelPhoto(file) {
+      if (jewelPhotos.length >= MAX_JEWEL_PHOTOS) return;
+      jewelPhotos.push({ file, previewUrl: URL.createObjectURL(file) });
+      renderJewelGrid();
+    }
+
+    async function rotateJewelPhoto(index, degrees) {
+      const current = jewelPhotos[index];
+      if (!current) return;
+
       try {
-        const response = await fetch(`${serverUrl}/api/complete/${id}`, {
-          method: 'POST',
-          body
-        });
+        const rotatedFile = await rotateImageFile(current.file, degrees);
+        if (current.previewUrl) URL.revokeObjectURL(current.previewUrl);
+        jewelPhotos[index] = { file: rotatedFile, previewUrl: URL.createObjectURL(rotatedFile) };
+        renderJewelGrid();
+      } catch (err) {
+        console.error('Error rotando la imagen:', err);
+        setStatus('No se pudo rotar la imagen.', 'error');
+      }
+    }
+
+    function removeJewelPhoto(index) {
+      const current = jewelPhotos[index];
+      if (current && current.previewUrl) URL.revokeObjectURL(current.previewUrl);
+      jewelPhotos.splice(index, 1);
+      renderJewelGrid();
+      setStatus('');
+    }
+
+    async function submitJewel() {
+      if (jewelPhotos.length === 0) return;
+
+      finishBtn.disabled = true;
+      setStatus('Procesando joya...', 'processing');
+
+      const body = new FormData();
+      jewelPhotos.forEach((entry) => {
+        body.append('images', entry.file, entry.file.name);
+      });
+
+      await submitCapture(`${serverUrl}/api/complete/${id}?type=jewel`, body);
+    }
+
+    async function submitCapture(url, body) {
+      try {
+        const response = await fetch(url, { method: 'POST', body });
         const data = await response.json();
 
         if (!response.ok || !data.ok) {
@@ -366,21 +522,77 @@
           throw new Error(`${msg}${trace}`);
         }
 
-        setStatus('Documento procesado. Ya puedes cerrar esta ventana.', 'success');
+        setStatus('Procesado. Ya puedes cerrar esta ventana.', 'success');
         finishBtn.textContent = 'Terminado';
       } catch (error) {
         const traceId = error && error.message && /traceId=/.test(error.message)
           ? error.message.split('traceId=')[1]
           : null;
-        console.error('Error al procesar documento:', error);
+        console.error('Error al procesar:', error);
         if (traceId) {
-          setStatus(`Error al procesar el documento. Trace: ${traceId}`, 'error');
+          setStatus(`Error al procesar. Trace: ${traceId}`, 'error');
         } else {
-          setStatus('Error al procesar el documento.', 'error');
+          setStatus('Error al procesar.', 'error');
         }
         finishBtn.disabled = false;
       }
-    });
+    }
+
+    function renderJewelGrid() {
+      cardsEl.innerHTML = '';
+      cardsEl.className = 'jewel-grid';
+
+      jewelPhotos.forEach((entry, index) => {
+        const thumb = document.createElement('article');
+        thumb.className = 'jewel-thumb';
+
+        const img = document.createElement('img');
+        img.src = entry.previewUrl;
+        img.alt = `Foto ${index + 1}`;
+        thumb.appendChild(img);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'jewel-thumb-btn jewel-remove-btn';
+        removeBtn.title = 'Quitar foto';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          removeJewelPhoto(index);
+        });
+        thumb.appendChild(removeBtn);
+
+        const rotateBtn = document.createElement('button');
+        rotateBtn.type = 'button';
+        rotateBtn.className = 'jewel-thumb-btn jewel-rotate-btn';
+        rotateBtn.title = 'Rotar foto';
+        rotateBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M20 4v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M20 10a8 8 0 1 0 2.2 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        `;
+        rotateBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          rotateJewelPhoto(index, 90);
+        });
+        thumb.appendChild(rotateBtn);
+
+        cardsEl.appendChild(thumb);
+      });
+
+      if (jewelPhotos.length < MAX_JEWEL_PHOTOS) {
+        const addTile = document.createElement('div');
+        addTile.className = 'jewel-add-tile';
+        addTile.textContent = '+';
+        addTile.addEventListener('click', () => {
+          pickerEl.click();
+        });
+        cardsEl.appendChild(addTile);
+      }
+
+      finishBtn.style.display = jewelPhotos.length > 0 ? 'block' : 'none';
+    }
 
     function renderCards() {
       cardsEl.innerHTML = '';

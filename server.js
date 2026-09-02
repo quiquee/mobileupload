@@ -7,6 +7,11 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 
+const { saveUploadedFile } = require('./lib/storage');
+const { ValidationError, serializeError } = require('./lib/errors');
+const { logInfo, logError } = require('./lib/logger');
+const { getRecognizer } = require('./recognizers');
+
 const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
 const PORT = process.env.PORT || cfg.port || 3456;
 const HOST = process.env.HOST || cfg.host || '0.0.0.0';
@@ -15,40 +20,6 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || cfg.publicUrl || `http://localhost
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: true, methods: ['GET', 'POST'] } });
-
-const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
-const LOG_FILE = path.join(__dirname, 'mobileupload-debug.log');
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-
-const upload = multer({ dest: UPLOADS_DIR, limits: { fileSize: 20 * 1024 * 1024 } });
-
-const FALLBACK_DOCUMENT_JSON = {
-  firstName: 'María',
-  lastName: 'García Pérez',
-  documentType: 'ID',
-  idNumber: '12345678A',
-  dateOfBirth: '01-01-1990',
-  dateOfExpiry: '01-01-2030',
-  sex: 'F',
-  nationality: 'ESP',
-  streetName: 'Avenida de Madrid',
-  streetNumber: 'S/N',
-  postalCode: '28001',
-  city: 'Madrid',
-  province: 'Madrid',
-  country: 'España',
-  countryCode: 'ES',
-  additionalDetails: {
-    mrz: 'IDESPCAA000000499999999R<<<<<<8001014F3106028ESP<<<<<<<<<<<1ESPANOLA<ESPANOLA<<CARMEN<<<<<',
-    supportNumber: 'AAA111111',
-    cardAccessNumber: '987654',
-    issuingAuthority: '28001A00K',
-    placeOfBirth: 'Madrid, Madrid',
-    parentsNames: ['Juan', 'Carmen'],
-    biometrics: ['Digital Facial Image', 'Left Index Fingerprint', 'Right Index Fingerprint'],
-    certificates: ['Authentication Certificate', 'Electronic Signature Certificate']
-  }
-};
 
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -75,79 +46,58 @@ app.get('/api/mobile-ready/:id', (req, res) => {
 
 app.post(
   '/api/complete/:id',
-  upload.fields([
-    { name: 'front', maxCount: 1 },
-    { name: 'back', maxCount: 1 }
-  ]),
+  (req, res, next) => {
+    req.recognizer = getRecognizer(req.query.type);
+    next();
+  },
+  (req, res, next) => req.recognizer.multer(req, res, next),
   async (req, res) => {
     const { id } = req.params;
     const traceId = `${id}-${Date.now()}`;
-    const files = req.files || {};
-    const frontFile = Array.isArray(files.front) ? files.front[0] : null;
-    const backFile = Array.isArray(files.back) ? files.back[0] : null;
-    const docType = typeof req.body.docType === 'string' ? req.body.docType : 'dni';
-
-    logInfo('complete_request_received', {
-      traceId,
-      id,
-      docType,
-      hasFront: !!frontFile,
-      hasBack: !!backFile
-    });
-
-    if (!frontFile && !backFile) {
-      logError('complete_request_missing_files', {
-        traceId,
-        id,
-        docType
-      });
-      return res.status(400).json({ ok: false, error: 'No files received', traceId });
-    }
+    const saveFile = (slot, file) => saveUploadedFile(id, slot, file);
 
     try {
-      const savedFront = frontFile ? moveUploadWithSessionName(id, 'front', frontFile) : null;
-      const savedBack = backFile ? moveUploadWithSessionName(id, 'back', backFile) : null;
-
-      const photos = {
-        front: savedFront ? `/uploads/${savedFront}` : null,
-        back: savedBack ? `/uploads/${savedBack}` : null
-      };
-
-      const documentData = await extractDocumentData({
-        traceId,
-        docType,
-        frontPath: savedFront ? path.join(UPLOADS_DIR, savedFront) : null,
-        backPath: savedBack ? path.join(UPLOADS_DIR, savedBack) : null
-      });
-
-      const payload = {
-        ok: true,
-        id,
-        docType,
-        photos,
-        photoUrls: [photos.front, photos.back].filter(Boolean),
-        documentData
-      };
+      const payload = await req.recognizer.handle({ id, traceId, req, saveFile });
 
       io.to(id).emit('session-complete', payload);
       logInfo('complete_request_success', {
         traceId,
         id,
-        docType,
-        front: photos.front,
-        back: photos.back,
-        documentData
+        type: req.recognizer.type,
+        payload
       });
       return res.json(payload);
     } catch (err) {
+      if (err instanceof ValidationError) {
+        logError('complete_request_missing_files', {
+          traceId,
+          id,
+          type: req.recognizer.type,
+          ...err.meta
+        });
+        return res.status(400).json({ ok: false, error: err.message, traceId });
+      }
+
       logError('complete_request_failed', {
         traceId,
         id,
-        docType,
+        type: req.recognizer.type,
         error: serializeError(err)
       });
       return res.status(500).json({ ok: false, error: 'Unable to process document', traceId });
     }
+  },
+  (err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+      const traceId = `${req.params.id}-${Date.now()}`;
+      logError('complete_request_multer_error', {
+        traceId,
+        id: req.params.id,
+        error: serializeError(err)
+      });
+      return res.status(400).json({ ok: false, error: err.message, traceId });
+    }
+    next(err);
   }
 );
 
@@ -156,208 +106,6 @@ io.on('connection', (socket) => {
     socket.join(id);
   });
 });
-
-function moveUploadWithSessionName(sessionId, slot, file) {
-  const originalExt = path.extname(file.originalname || '') || '.jpg';
-  const safeExt = originalExt.toLowerCase();
-  const timestamp = Date.now();
-  const filename = `${sessionId}_${slot}_${timestamp}${safeExt}`;
-  const finalPath = path.join(UPLOADS_DIR, filename);
-  fs.renameSync(file.path, finalPath);
-  return filename;
-}
-
-function readGeminiKeyFromSecrets() {
-  const secretsPath = path.join(__dirname, 'secrets.txt');
-  if (!fs.existsSync(secretsPath)) return '';
-  const content = fs.readFileSync(secretsPath, 'utf8');
-  const line = content
-    .split(/\r?\n/)
-    .find((entry) => entry.trim().startsWith('GEMINI_API_KEY='));
-  if (!line) return '';
-  return line.slice('GEMINI_API_KEY='.length).trim();
-}
-
-const GEMINI_RESPONSE_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    firstName:     { type: 'STRING', nullable: true },
-    lastName:      { type: 'STRING', nullable: true },
-    documentType:  { type: 'STRING', nullable: true },
-    idNumber:      { type: 'STRING', nullable: true },
-    dateOfBirth:   { type: 'STRING', nullable: true },
-    dateOfExpiry:  { type: 'STRING', nullable: true },
-    sex:           { type: 'STRING', nullable: true },
-    nationality:   { type: 'STRING', nullable: true },
-    streetName:    { type: 'STRING', nullable: true },
-    streetNumber:  { type: 'STRING', nullable: true },
-    postalCode:    { type: 'STRING', nullable: true },
-    city:          { type: 'STRING', nullable: true },
-    province:      { type: 'STRING', nullable: true },
-    country:       { type: 'STRING', nullable: true },
-    countryCode:   { type: 'STRING', nullable: true },
-    additionalDetails: {
-      type: 'OBJECT',
-      nullable: true,
-      properties: {
-        mrz:              { type: 'STRING', nullable: true },
-        supportNumber:    { type: 'STRING', nullable: true },
-        cardAccessNumber: { type: 'STRING', nullable: true },
-        issuingAuthority: { type: 'STRING', nullable: true },
-        placeOfBirth:     { type: 'STRING', nullable: true },
-        parentsNames:     { type: 'ARRAY',  nullable: true, items: { type: 'STRING' } },
-        biometrics:       { type: 'ARRAY',  nullable: true, items: { type: 'STRING' } },
-        certificates:     { type: 'ARRAY',  nullable: true, items: { type: 'STRING' } }
-      }
-    }
-  }
-};
-
-function readFileAsBase64(filePath) {
-  return fs.readFileSync(filePath).toString('base64');
-}
-
-async function extractDocumentData({ traceId, docType, frontPath, backPath }) {
-  const geminiKey = readGeminiKeyFromSecrets();
-  if (!geminiKey) {
-    logInfo('gemini_key_missing_using_fallback', { traceId, docType });
-    return FALLBACK_DOCUMENT_JSON;
-  }
-
-  const parts = [
-    {
-      text:
-        'You are an OCR and identity-document extraction engine. ' +
-        'Extract all readable fields from the provided document image(s). ' +
-        'documentType must be one of: ID, NIE, PASSPORT, DRIVER_LICENSE. ' +
-        'Infer countryCode (ISO 3166-1 alpha-2) from the document when possible. ' +
-        'Place MRZ, support number, card access number, issuing authority, place of birth, ' +
-        'parents names, biometrics and certificates inside additionalDetails. ' +
-        'Use null for any field that cannot be extracted or inferred.'
-    },
-    { text: `documentHint=${docType}` }
-  ];
-
-  if (frontPath) {
-    parts.push({ text: 'frontImage' });
-    parts.push({
-      inline_data: {
-        mime_type: guessMimeType(frontPath),
-        data: readFileAsBase64(frontPath)
-      }
-    });
-  }
-
-  if (backPath) {
-    parts.push({ text: 'backImage' });
-    parts.push({
-      inline_data: {
-        mime_type: guessMimeType(backPath),
-        data: readFileAsBase64(backPath)
-      }
-    });
-  }
-
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema: GEMINI_RESPONSE_SCHEMA
-          }
-        })
-      }
-    );
-
-    if (!response.ok) {
-      const responseText = await response.text();
-      logError('gemini_http_error', {
-        traceId,
-        status: response.status,
-        body: responseText
-      });
-      return FALLBACK_DOCUMENT_JSON;
-    }
-
-    const result = await response.json();
-    const text = (result.candidates || [])
-      .flatMap((candidate) => (candidate.content && Array.isArray(candidate.content.parts) ? candidate.content.parts : []))
-      .map((part) => part.text || '')
-      .join('\n')
-      .trim();
-
-    if (!text) {
-      logError('gemini_empty_response_using_fallback', {
-        traceId,
-        docType
-      });
-      return FALLBACK_DOCUMENT_JSON;
-    }
-
-    const documentData = JSON.parse(text);
-    logInfo('gemini_extraction_success', { traceId, docType, documentData });
-    return documentData;
-  } catch (err) {
-    logError('gemini_extraction_failed', {
-      traceId,
-      docType,
-      error: serializeError(err)
-    });
-    return FALLBACK_DOCUMENT_JSON;
-  }
-}
-
-function guessMimeType(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  if (ext === '.png') return 'image/png';
-  if (ext === '.webp') return 'image/webp';
-  if (ext === '.heic') return 'image/heic';
-  return 'image/jpeg';
-}
-
-function serializeError(err) {
-  if (!err) return { message: 'Unknown error' };
-  return {
-    message: err.message,
-    stack: err.stack,
-    name: err.name
-  };
-}
-
-function writeLog(level, event, meta = {}) {
-  const entry = {
-    time: new Date().toISOString(),
-    level,
-    event,
-    meta
-  };
-  const line = `${JSON.stringify(entry)}\n`;
-
-  if (level === 'error') {
-    console.error(`[${event}]`, meta);
-  } else {
-    console.log(`[${event}]`, meta);
-  }
-
-  try {
-    fs.appendFileSync(LOG_FILE, line, 'utf8');
-  } catch (fileErr) {
-    console.error('[log_write_failed]', serializeError(fileErr));
-  }
-}
-
-function logInfo(event, meta) {
-  writeLog('info', event, meta);
-}
-
-function logError(event, meta) {
-  writeLog('error', event, meta);
-}
 
 app.use((err, req, res, next) => {
   const traceId = `uncaught-${Date.now()}`;

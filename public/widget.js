@@ -5,6 +5,8 @@
 
 (function (global) {
   const VALID_DOC_TYPES = ['passport', 'dni', 'nie', 'driver'];
+  const VALID_TYPES = ['identity_document', 'jewel'];
+  const DEFAULT_TYPE = 'identity_document';
 
   const CSS = `
     .mu-root, .mu-root * { box-sizing: border-box; }
@@ -31,6 +33,7 @@
   const MobileUpload = {
     init(containerId, options = {}) {
       const serverUrl = (options.serverUrl || '').replace(/\/$/, '');
+      const type = VALID_TYPES.includes(options.type) ? options.type : DEFAULT_TYPE;
       const docType = VALID_DOC_TYPES.includes(options.docType) ? options.docType : 'dni';
 
       const container = document.getElementById(containerId);
@@ -41,19 +44,23 @@
       return new Promise((resolve, reject) => {
         loadScript(`${serverUrl}/socket.io/socket.io.js`, () => {
           loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', () => {
-            startSession(container, serverUrl, docType, resolve, reject);
+            startSession(container, serverUrl, type, docType, resolve, reject);
           });
         });
       });
     }
   };
 
-  function startSession(container, serverUrl, docType, resolve, reject) {
+  function startSession(container, serverUrl, type, docType, resolve, reject) {
     fetch(`${serverUrl}/api/session`)
       .then((response) => response.json())
       .then(({ id, publicUrl }) => {
         const qrBase = (publicUrl || serverUrl).replace(/\/$/, '');
-        const uploadUrl = `${qrBase}/upload?id=${id}&docType=${docType}&v=${Date.now().toString(36)}`;
+        // Omit &type= entirely for the default case, so a caller that never passes
+        // `type` (e.g. VendeOro's existing widget usage) gets a byte-identical URL.
+        const typeParam = type === DEFAULT_TYPE ? '' : `&type=${type}`;
+        const docTypeParam = type === 'jewel' ? '' : `&docType=${docType}`;
+        const uploadUrl = `${qrBase}/upload?id=${id}${docTypeParam}${typeParam}&v=${Date.now().toString(36)}`;
 
         container.innerHTML = renderWidgetHtml({ id });
 
@@ -74,7 +81,7 @@
 
         socket.on('session-complete', (payload) => {
           console.log('[MobileUpload] session-complete payload', payload);
-          const normalized = normalizeResult(payload, serverUrl, docType, id);
+          const normalized = normalizeResult(payload, serverUrl, type, docType, id);
           console.log('[MobileUpload] resolved result', normalized);
 
           if (!settled) {
@@ -95,7 +102,14 @@
       });
   }
 
-  function normalizeResult(payload, serverUrl, fallbackDocType, id) {
+  function normalizeResult(payload, serverUrl, type, fallbackDocType, id) {
+    const effectiveType = (payload && payload.type) || type;
+    return effectiveType === 'jewel'
+      ? normalizeJewelResult(payload, serverUrl, id)
+      : normalizeIdentityDocumentResult(payload, serverUrl, fallbackDocType, id);
+  }
+
+  function normalizeIdentityDocumentResult(payload, serverUrl, fallbackDocType, id) {
     const photos = payload && payload.photos ? payload.photos : {};
     const front = photos.front ? absoluteUrl(serverUrl, photos.front) : null;
     const back = photos.back ? absoluteUrl(serverUrl, photos.back) : null;
@@ -106,6 +120,16 @@
       docType: (payload && payload.docType) || fallbackDocType,
       photos: photoUrls,
       photosBySlot: { front, back },
+      documentData: payload && payload.documentData ? payload.documentData : null
+    };
+  }
+
+  function normalizeJewelResult(payload, serverUrl, id) {
+    const rawPhotos = payload && Array.isArray(payload.photos) ? payload.photos : [];
+    return {
+      id: (payload && payload.id) || id,
+      type: 'jewel',
+      photos: rawPhotos.map((photo) => absoluteUrl(serverUrl, photo)).filter(Boolean),
       documentData: payload && payload.documentData ? payload.documentData : null
     };
   }
